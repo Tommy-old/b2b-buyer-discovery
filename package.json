@@ -1,0 +1,26 @@
+{
+  "name": "trade-hunting-skill",
+  "version": "1.0.0",
+  "description": "AI-powered trade lead hunting for mining equipment buyers",
+  "main": "dist/index.js",
+  "scripts": {
+    "hunt": "ts-node src/index.ts",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@types/nodemailer": "^8.0.0",
+    "axios": "^1.7.0",
+    "csv-stringify": "^6.5.0",
+    "dotenv": "^16.4.0",
+    "lowdb": "^1.0.0",
+    "nodemailer": "^8.0.8",
+    "playwright": "^1.44.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/lowdb": "^1.0.15",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}
