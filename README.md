@@ -10,11 +10,11 @@
 
 | 模块 | 功能 |
 |------|------|
-| 智能搜索 | 通过 SerpAPI 在 Google 上执行多关键词 × 多市场组合搜索，关键词和目标市场均可自定义（内置示例以矿业设备采购为参考） |
+| 智能搜索 | 通过 Google Custom Search API（推荐，100次/天免费）或 SerpAPI（备选）在 Google 上执行多关键词 × 多市场组合搜索，关键词和目标市场均可自定义（内置示例以矿业设备采购为参考） |
 | 内容抓取 | 自动抓取搜索结果页面文本，过滤掉社交媒体、电商平台和供应商推广页面 |
-| 双层评分 | **规则引擎**快速预筛（11 条规则过滤供应商/制造商） + **DeepSeek AI** 深度评分（0-10 分），精准识别真实买家 |
+| 双层评分 | **规则引擎**快速预筛（11 条规则过滤供应商/制造商） + **OpenAI / DeepSeek AI** 深度评分（0-10 分），精准识别真实买家 |
 | 联系提取 | 自动提取邮箱、电话、WhatsApp、WeChat 等联系方式 |
-| 二次补全 | 通过 SerpAPI 按公司名搜索，补全遗漏的邮箱和电话 |
+| 二次补全 | 通过搜索 API 按公司名搜索，补全遗漏的邮箱和电话 |
 | 本地存储 | JSON 数据库自动去重，记录每条线索的历史出现次数 |
 | CSV 导出 | 12 分制中文格式导出，含 WhatsApp 直链、LinkedIn 搜索链接、Google OSINT 链接 |
 | 开发信生成 | 西英双语自动生成开发信草稿（墨西哥/秘鲁/智利等拉美市场自动用西班牙语，其他市场用英语） |
@@ -24,8 +24,8 @@
 
 - **语言**: TypeScript 5.4
 - **运行时**: Node.js 18+
-- **搜索 API**: [SerpAPI](https://serpapi.com/) (Google Search)
-- **AI 评分**: [DeepSeek API](https://platform.deepseek.com/)
+- **搜索 API**: [Google Custom Search API](https://developers.google.com/custom-search)（推荐，100次/天免费）/ [SerpAPI](https://serpapi.com/)（备选，200次/月免费）
+- **AI 评分**: [OpenAI API](https://platform.openai.com/)（推荐）/ [DeepSeek API](https://platform.deepseek.com/)（备选，国内用户无法开通 OpenAI 时选用）
 - **浏览器自动化**: Playwright (可选，默认流程使用 axios 抓取页面，不需要 Playwright)
 - **邮件**: Nodemailer + Gmail SMTP
 - **日志**: Winston
@@ -49,7 +49,7 @@
 
 ```bash
 git clone <your-repo-url>
-cd trade-hunting-skill
+cd b2b-buyer-discovery
 ```
 
 ### 2. 安装依赖
@@ -91,14 +91,24 @@ cp .env.example .env
 
 编辑 `.env`，填写以下配置：
 
-#### 必填项
+#### 搜索 API（二选一）
 
-| 变量 | 说明 | 获取方式 |
-|------|------|------|
-| `DEEPSEEK_API_KEY` | DeepSeek API Key，用于 AI 评分 | 注册 [platform.deepseek.com](https://platform.deepseek.com/) → API Keys → 创建 Key |
-| `SERPAPI_KEY` | SerpAPI Key，用于 Google 搜索 | 注册 [serpapi.com](https://serpapi.com/) → Dashboard → API Key |
+| 变量 | 优先级 | 说明 | 获取方式 |
+|------|:---:|------|------|
+| `GOOGLE_CSE_API_KEY` | **推荐** | Google Custom Search API Key，100次/天免费 | [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → 创建 API Key，并启用 Custom Search API |
+| `GOOGLE_CSE_CX` | **推荐** | 搜索引擎 ID（与 `GOOGLE_CSE_API_KEY` 配对使用） | [Programmable Search Engine](https://programmablesearchengine.google.com/) → 创建搜索引擎 → 获取 CX |
+| `SERPAPI_KEY` | 备选 | SerpAPI Key，200次/月免费 | 注册 [serpapi.com](https://serpapi.com/) → Dashboard → API Key |
 
-> **费用说明**：SerpAPI 免费额度为 **100 次搜索/月**，超额后需付费（$50/月起）。DeepSeek API 按 token 计费，价格非常低廉（约 ¥1/百万 token）。本项目单次完整运行约 15 次搜索，在免费额度内。
+> **Google CSE 与 SerpAPI 的区别**：Google CSE 直接对接 Google 官方服务，每天 100 次免费搜索，数据最准确但需要 Google Cloud 账号和绑定信用卡。SerpAPI 是第三方封装，每月 200 次免费，无需信用卡即可注册。不想折腾 Google Cloud 的用户可用 SerpAPI 作为备选。
+
+#### AI API（二选一）
+
+| 变量 | 优先级 | 说明 | 获取方式 |
+|------|:---:|------|------|
+| `OPENAI_API_KEY` | **推荐** | OpenAI API Key，按 token 计费 | 注册 [platform.openai.com](https://platform.openai.com/) → API Keys → 创建 Key |
+| `DEEPSEEK_API_KEY` | 备选 | DeepSeek API Key，价格低廉（约 ¥1/百万 token） | 注册 [platform.deepseek.com](https://platform.deepseek.com/) → API Keys → 创建 Key |
+
+> **OpenAI 与 DeepSeek 的区别**：OpenAI 综合评分质量最高，但国内用户可能无法直接注册（需要海外手机号验证）。DeepSeek 国内可直接注册使用且价格更低，适合国内用户作为备选。
 
 #### 搜索配置
 
@@ -224,7 +234,7 @@ python scripts/reformat_leads.py
 ## 项目结构
 
 ```
-trade-hunting-skill/
+b2b-buyer-discovery/
 ├── src/
 │   ├── index.ts                  # 入口文件，CLI 参数解析
 │   ├── types.ts                  # 类型定义
@@ -233,9 +243,9 @@ trade-hunting-skill/
 │   │   └── logger.ts             # Winston 日志
 │   └── skills/
 │       ├── search/
-│       │   └── google.ts         # SerpAPI 搜索 + 公司联系方式搜索
+│       │   └── google.ts         # Google CSE / SerpAPI 搜索 + 公司联系方式搜索
 │       ├── ai/
-│       │   ├── scorer.ts         # DeepSeek AI 评分
+│       │   ├── scorer.ts         # OpenAI / DeepSeek AI 评分
 │       │   └── rules.ts          # 规则引擎预筛
 │       ├── extractors/
 │       │   └── contact.ts        # 邮箱/电话/WhatsApp/公司名/国家提取
@@ -279,10 +289,10 @@ trade-hunting-skill/
         │
 3. 双层评分
    ├── 规则引擎：过滤供应商/制造商页面
-   └── DeepSeek AI：0-10 分深度评分
+   └── OpenAI / DeepSeek AI：0-10 分深度评分
         │
 4. 联系补全
-   └── SerpAPI 按公司名二次搜索，补全遗漏联系方式
+   └── 搜索 API 按公司名二次搜索，补全遗漏联系方式
         │
 5. 存储导出
    ├── 存入本地 JSON 数据库（自动去重）
@@ -295,7 +305,7 @@ trade-hunting-skill/
 |------|------|
 | **运行报 `Cannot find module ts-node`** | Node.js 版本太低，需要 18+。运行 `node -v` 检查，如果不是 18+ 请升级。 |
 | **`npm install` 特别慢** | 国内网络问题。使用 `npm install --registry=https://registry.npmmirror.com` 加速。 |
-| **搜索不返回结果** | 先检查 SerpAPI 额度：登录 [serpapi.com](https://serpapi.com/) 查看 Dashboard。免费版 **100 次/月**，用完即停。如果额度充足但无结果，可能是关键词太偏门，换一批关键词再试。 |
+| **搜索不返回结果** | 先检查 API 额度：Google CSE 免费 **100 次/天**、SerpAPI 免费 **200 次/月**。额度用完服务会停止返回结果。如果额度充足但无结果，可能是关键词太偏门，换一批关键词再试。 |
 | **邮件发送报 `Invalid login`** | Gmail 必须使用**应用专用密码**而非登录密码。参见上方「Gmail 应用专用密码获取步骤」。 |
 | **`cp` 命令在 Windows 上报错** | PowerShell 中改用 `Copy-Item .env.example .env`，CMD 中改用 `copy .env.example .env`。 |
 | **`python` 命令找不到** | 运行 `reformat_leads.py` 需要 Python 3.x。如果只使用 `npm run hunt`，不需要 Python。 |
