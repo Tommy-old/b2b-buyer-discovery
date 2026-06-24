@@ -395,6 +395,11 @@ b2b-buyer-discovery/
 - `.env` 不能提交（已在 `.gitignore` 中）
 - `npx tsc --noEmit` 无错误
 
+## 联系作者
+
+- **Bug 反馈 / 功能建议**：请在 GitHub 上提交 [Issue](https://github.com/Tommy-old/b2b-buyer-discovery/issues)，选择对应的模板（错误报告 / 功能请求）
+- **私下联系**：dh890612[at]gmail.com（请将 [at] 替换为 @）
+
 ## 许可证
 
 MIT License — 详见 [LICENSE](LICENSE)。
