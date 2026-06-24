@@ -12,12 +12,12 @@
 |------|------|
 | 智能搜索 | 通过 SerpAPI 在 Google 上执行多关键词 × 多市场组合搜索，关键词和目标市场均可自定义（内置示例以矿业设备采购为参考） |
 | 内容抓取 | 自动抓取搜索结果页面文本，过滤掉社交媒体、电商平台和供应商推广页面 |
-| 双层评分 | **规则引擎**快速预筛 + **DeepSeek AI** 深度评分（0-10 分），精准识别真实买家 |
+| 双层评分 | **规则引擎**快速预筛（11 条规则过滤供应商/制造商） + **DeepSeek AI** 深度评分（0-10 分），精准识别真实买家 |
 | 联系提取 | 自动提取邮箱、电话、WhatsApp、WeChat 等联系方式 |
 | 二次补全 | 通过 SerpAPI 按公司名搜索，补全遗漏的邮箱和电话 |
 | 本地存储 | JSON 数据库自动去重，记录每条线索的历史出现次数 |
 | CSV 导出 | 12 分制中文格式导出，含 WhatsApp 直链、LinkedIn 搜索链接、Google OSINT 链接 |
-| 开发信生成 | 西英双语自动生成开发信草稿，意向分 ≥7 的线索自动匹配 |
+| 开发信生成 | 西英双语自动生成开发信草稿（墨西哥/秘鲁/智利等拉美市场自动用西班牙语，其他市场用英语） |
 | 邮件发送 | 通过 SMTP 批量发送开发信（默认 dry-run 模式，安全可控） |
 
 ## 技术栈
@@ -26,18 +26,24 @@
 - **运行时**: Node.js 18+
 - **搜索 API**: [SerpAPI](https://serpapi.com/) (Google Search)
 - **AI 评分**: [DeepSeek API](https://platform.deepseek.com/)
-- **浏览器自动化**: Playwright (可选，用于复杂页面抓取)
+- **浏览器自动化**: Playwright (可选，默认流程使用 axios 抓取页面，不需要 Playwright)
 - **邮件**: Nodemailer + Gmail SMTP
 - **日志**: Winston
 - **数据存储**: Lowdb (JSON 文件数据库)
 - **CSV 处理**: csv-stringify
+- **辅助脚本**: Python 3.x (仅 `scripts/reformat_leads.py`)
 
 ## 安装步骤
 
 ### 前置要求
 
-- Node.js 18+
-- npm 9+
+| 工具 | 最低版本 | 检查命令 |
+|------|:------:|------|
+| Node.js | 18+ | `node -v` |
+| npm | 9+ | `npm -v` |
+| Python | 3.x | `python --version` (仅运行 `reformat_leads.py` 时需要) |
+
+> **Node.js 下载**：如果还未安装，请前往 [nodejs.org](https://nodejs.org/) 下载 LTS 版本（Windows/macOS 直接运行安装包，Linux 推荐使用 nvm）。
 
 ### 1. 克隆仓库
 
@@ -52,13 +58,20 @@ cd trade-hunting-skill
 npm install
 ```
 
-### 3. 安装 Playwright 浏览器（可选）
+> **国内用户加速**：如果安装很慢，可使用淘宝镜像：
+> ```bash
+> npm install --registry=https://registry.npmmirror.com
+> ```
 
-如果使用 Playwright 模式的页面抓取：
+### 3. 安装 Playwright 浏览器（绝大多数情况不需要）
+
+**默认流程使用 axios 直接抓取页面，不需要 Playwright。** 只有当你修改源码、主动启用 `src/core/browser.ts` 的 `getPageText()` 来抓取 JavaScript 渲染的页面时，才需要安装：
 
 ```bash
 npx playwright install chromium
 ```
+
+> 如果你不确定是否需要，答案就是「不需要」。跳过这一步直接往下走即可。
 
 ## 配置说明
 
@@ -66,46 +79,84 @@ npx playwright install chromium
 
 复制示例配置文件并填入你的 API 密钥：
 
+**Windows (PowerShell)：**
+```powershell
+Copy-Item .env.example .env
+```
+
+**macOS / Linux：**
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env`，填写以下必填项：
+编辑 `.env`，填写以下配置：
 
-| 变量 | 必填 | 说明 |
-|------|:---:|------|
-| `DEEPSEEK_API_KEY` | 是 | DeepSeek API Key，用于 AI 评分 |
-| `SERPAPI_KEY` | 是 | SerpAPI Key，用于 Google 搜索 |
-| `TARGET_MARKETS` | 否 | 目标市场，逗号分隔（示例默认：Peru,Indonesia,Ghana，可改为你的行业目标市场） |
-| `MAX_RESULTS_PER_KEYWORD` | 否 | 每个关键词最大搜索结果数（默认：20） |
-| `MIN_SCORE` | 否 | 最低意向分阈值（默认：5） |
-| `SEARCH_DELAY_MS` | 否 | 搜索间隔毫秒数（默认：3000） |
+#### 必填项
 
-**邮件配置（可选）**：
+| 变量 | 说明 | 获取方式 |
+|------|------|------|
+| `DEEPSEEK_API_KEY` | DeepSeek API Key，用于 AI 评分 | 注册 [platform.deepseek.com](https://platform.deepseek.com/) → API Keys → 创建 Key |
+| `SERPAPI_KEY` | SerpAPI Key，用于 Google 搜索 | 注册 [serpapi.com](https://serpapi.com/) → Dashboard → API Key |
+
+> **费用说明**：SerpAPI 免费额度为 **100 次搜索/月**，超额后需付费（$50/月起）。DeepSeek API 按 token 计费，价格非常低廉（约 ¥1/百万 token）。本项目单次完整运行约 15 次搜索，在免费额度内。
+
+#### 搜索配置
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:---:|------|------|
+| `TARGET_MARKETS` | 否 | Peru,Indonesia,Ghana,Mexico,Chile,Nigeria | 目标市场，逗号分隔 |
+| `MAX_RESULTS_PER_KEYWORD` | 否 | 20 | 每个关键词最大搜索结果数 |
+| `MIN_SCORE` | 否 | 5 | 最低意向分阈值（0-10），低于此分的线索不输出 |
+| `SEARCH_DELAY_MS` | 否 | 3000 | 搜索间隔（毫秒）。调太低会被 Google/SerpAPI 限流，建议不低于 2000 |
+
+#### 邮件配置（可选，仅在使用邮件发送功能时需要）
 
 | 变量 | 说明 |
 |------|------|
-| `SMTP_HOST` | SMTP 服务器地址 |
-| `SMTP_PORT` | SMTP 端口 |
-| `SMTP_USER` | 发件邮箱 |
-| `SMTP_PASS` | 邮箱密码/应用专用密码 |
-| `MAIL_WHATSAPP` | 邮件签名中的 WhatsApp |
-| `MAIL_WEBSITE` | 邮件签名中的网站 |
-| `MAIL_MIN_SCORE` | 发邮件的最低意向分（默认：7） |
-| `MAIL_DELAY_MS` | 邮件发送间隔（默认：3000） |
+| `SMTP_HOST` | SMTP 服务器地址（Gmail 填 `smtp.gmail.com`） |
+| `SMTP_PORT` | SMTP 端口（Gmail 填 `587`） |
+| `SMTP_SECURE` | 是否使用 TLS（Gmail 填 `false`，端口 587 用 STARTTLS） |
+| `SMTP_USER` | 发件邮箱地址 |
+| `SMTP_PASS` | **Gmail 应用专用密码**（非登录密码！获取方式见下方） |
+| `MAIL_FROM_NAME` | 发件人显示名称（如 `Linda - MINA SC`） |
+| `MAIL_FROM_ADDR` | 发件人邮箱地址（通常与 SMTP_USER 相同） |
+| `MAIL_WHATSAPP` | 邮件签名中的 WhatsApp 号码 |
+| `MAIL_WEBSITE` | 邮件签名中的网站 URL |
+| `MAIL_MIN_SCORE` | 发邮件的最低意向分（默认 7，只给高分线索发邮件） |
+| `MAIL_DELAY_MS` | 邮件发送间隔（默认 3000ms，避免触发 Gmail 限速） |
+
+> **Gmail 应用专用密码获取步骤**：
+> 1. 确保 Gmail 账号已开启[两步验证](https://myaccount.google.com/security)
+> 2. 前往 [App Passwords](https://myaccount.google.com/apppasswords) 页面
+> 3. 选择「Mail」和「Other」，输入名称（如 `Trade Hunting`），点击「Generate」
+> 4. 复制生成的 16 位密码，填入 `SMTP_PASS`
+>
+> ⚠️ Gmail 从 2025 年起已禁用普通密码登录 SMTP，**必须**使用应用专用密码。
+
+#### CSV 导出配置
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:---:|------|------|
+| `EXPORT_DIR` | 否 | `~/Desktop/矿机客户线索/` | CSV 文件导出目录 |
 
 > **安全提醒**：`.env` 文件已在 `.gitignore` 中排除，不会被上传到 Git。请不要将真实 API Key 提交到公开仓库。
 
 ## 使用方法
 
-### 基础用法
+### 快速开始
+
+编辑 `.env` 中的 `TARGET_MARKETS` 和 `MIN_SCORE`，然后运行：
 
 ```bash
-# 使用默认配置运行（示例：Peru + Indonesia + Ghana，最低 5 分，可在 .env 中自定义）
 npm run hunt
 ```
 
+> 默认配置（6 个市场）完整运行约需要 **3-5 分钟**。
+> 运行过程中你会看到每条搜索和评分的进度日志，这是正常现象，不是错误。
+
 ### 自定义市场
+
+`--` 是 npm 的参数透传分隔符——`--` 前面的参数给 npm，`--` 后面的参数传给程序本身：
 
 ```bash
 # 指定市场（逗号分隔）
@@ -142,6 +193,8 @@ npm run hunt -- --keyword "jaw crusher" --market Ghana --score 7
    WA: +51987654321
 ```
 
+如果搜索无结果（关键词太偏门或市场太小），程序会正常结束并显示 `Done. 0 qualified leads found.`——这不是 bug，可以考虑换一批关键词再试。
+
 ### CSV 导出
 
 CSV 文件默认导出到 `~/Desktop/矿机客户线索/`（可在 `.env` 中通过 `EXPORT_DIR` 自定义），包含以下列：
@@ -158,15 +211,15 @@ CSV 文件默认导出到 `~/Desktop/矿机客户线索/`（可在 `.env` 中通
 | 跟进优先级 | 经销商 / 极优先 / 优先 / 跟进 / 普通 |
 | 开发建议 | AI 生成的跟进策略 |
 
-### 重新格式化脚本
+### 重新格式化脚本（仅旧版升级用户）
 
-如果已有旧版 CSV 导出文件，可用 Python 脚本重新格式化为 12 分制中文版：
+> ⚠️ 如果你是新用户，跳过此节。这个脚本仅用于将旧版英文 CSV 转换为新版 12 分制中文格式。
 
 ```bash
 python scripts/reformat_leads.py
 ```
 
-该脚本会自动找到最新的 CSV 文件，添加「开发信预览」列，并输出到同目录。
+脚本会自动找到最新的 CSV 文件，添加「开发信预览」列，输出到同目录。
 
 ## 项目结构
 
@@ -176,7 +229,7 @@ trade-hunting-skill/
 │   ├── index.ts                  # 入口文件，CLI 参数解析
 │   ├── types.ts                  # 类型定义
 │   ├── core/
-│   │   ├── browser.ts            # Playwright 浏览器管理
+│   │   ├── browser.ts            # Playwright 浏览器管理（默认流程不使用）
 │   │   └── logger.ts             # Winston 日志
 │   └── skills/
 │       ├── search/
@@ -196,15 +249,21 @@ trade-hunting-skill/
 │       └── workflows/
 │           └── hunting.ts        # 主工作流编排
 ├── scripts/
-│   └── reformat_leads.py         # CSV 重新格式化工具
+│   └── reformat_leads.py         # CSV 重新格式化工具（Python）
 ├── data/                         # 本地数据库（gitignore）
 ├── exports/                      # CSV 导出目录（gitignore）
 ├── logs/                         # 运行日志（gitignore）
+├── .claude/                      # Claude 项目配置
 ├── .env.example                  # 环境变量模板
+├── .gitignore
+├── LICENSE                       # MIT 许可证
 ├── package.json
+├── package-lock.json
 ├── tsconfig.json
 └── README.md
 ```
+
+> **关于编译**：本项目通过 `ts-node` 直接运行 TypeScript 源码，**不需要编译**到 `dist/`。`npm run hunt` 直接运行 `src/index.ts`，无需 `npm run build`。
 
 ## 工作流程
 
@@ -215,7 +274,7 @@ trade-hunting-skill/
    └── 去重
         │
 2. 内容抓取
-   ├── 抓取搜索结果页面文本
+   ├── 抓取搜索结果页面文本（axios）
    └── 提取邮箱、电话、WhatsApp、WeChat
         │
 3. 双层评分
@@ -226,9 +285,22 @@ trade-hunting-skill/
    └── SerpAPI 按公司名二次搜索，补全遗漏联系方式
         │
 5. 存储导出
-   ├── 存入本地 JSON 数据库
+   ├── 存入本地 JSON 数据库（自动去重）
    └── 导出 12 分制中文 CSV
 ```
+
+## 常见问题
+
+| 问题 | 解答 |
+|------|------|
+| **运行报 `Cannot find module ts-node`** | Node.js 版本太低，需要 18+。运行 `node -v` 检查，如果不是 18+ 请升级。 |
+| **`npm install` 特别慢** | 国内网络问题。使用 `npm install --registry=https://registry.npmmirror.com` 加速。 |
+| **搜索不返回结果** | 先检查 SerpAPI 额度：登录 [serpapi.com](https://serpapi.com/) 查看 Dashboard。免费版 **100 次/月**，用完即停。如果额度充足但无结果，可能是关键词太偏门，换一批关键词再试。 |
+| **邮件发送报 `Invalid login`** | Gmail 必须使用**应用专用密码**而非登录密码。参见上方「Gmail 应用专用密码获取步骤」。 |
+| **`cp` 命令在 Windows 上报错** | PowerShell 中改用 `Copy-Item .env.example .env`，CMD 中改用 `copy .env.example .env`。 |
+| **`python` 命令找不到** | 运行 `reformat_leads.py` 需要 Python 3.x。如果只使用 `npm run hunt`，不需要 Python。 |
+| **运行时大量日志刷屏** | 正常现象。每条搜索和评分都会输出进度日志，方便追踪运行状态。 |
+| **运行完没有任何输出** | 检查 `MIN_SCORE` 是否设得太高——如果所有线索得分都低于阈值，不会有任何输出。可临时调低到 3-4 试跑验证。 |
 
 ## 扩展开发
 
@@ -257,7 +329,7 @@ export const TARGET_MARKETS = [
 
 ## 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request！（仓库推送到 GitHub 后以下流程生效）
 
 1. Fork 本仓库
 2. 创建特性分支 (`git checkout -b feature/amazing-feature`)

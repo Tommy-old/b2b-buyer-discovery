@@ -36,8 +36,8 @@ INVENTORY_EN = (
 
 LATIN_WORDS = re.compile(r'trituradora|mandíbula|cono|molino|chancadora|zaranda', re.IGNORECASE)
 
-_WA  = os.getenv("MAIL_WHATSAPP", "+8616651869961")
-_WEB = os.getenv("MAIL_WEBSITE",  "www.minasc.com.es")
+_WA  = os.getenv("MAIL_WHATSAPP", "+8613800000000")
+_WEB = os.getenv("MAIL_WEBSITE",  "www.example.com")
 SENDER_FOOTER_ES = f"Linda\nMINA SC – Maquinaria Industrial para Minería\nWhatsApp: {_WA}\nWeb: {_WEB}"
 SENDER_FOOTER_EN = f"Linda\nMINA SC – Industrial Machinery for Mining\nWhatsApp: {_WA}\nWeb: {_WEB}"
 

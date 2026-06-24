@@ -25,8 +25,8 @@ export function detectLanguage(market: string): 'es' | 'en' {
 }
 
 function buildSignature(lang: 'es' | 'en'): string {
-  const wa  = process.env.MAIL_WHATSAPP || '+8616651869961';
-  const web = process.env.MAIL_WEBSITE  || 'www.minasc.com.es';
+  const wa  = process.env.MAIL_WHATSAPP || '+8613800000000';
+  const web = process.env.MAIL_WEBSITE  || 'www.example.com';
   const name = lang === 'es'
     ? 'MINA SC – Maquinaria Industrial para Minería'
     : 'MINA SC – Industrial Machinery for Mining';
