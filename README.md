@@ -1,6 +1,6 @@
 # Trade Hunting Skill
 
-> AI 驱动的矿机设备买家发现工具 — 自动搜索、评估、提取联系方式，帮你在拉美、东南亚、非洲找到真实采购线索。
+> AI 驱动的 B2B 客户发现工具 — 自动搜索、评估、提取联系方式，帮你从全球市场找到真实采购线索。内置示例以矿业设备行业为参考，关键词、市场、评分规则均可按需自定义。
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
@@ -10,7 +10,7 @@
 
 | 模块 | 功能 |
 |------|------|
-| 智能搜索 | 通过 SerpAPI 在 Google 上搜索 18 组矿机采购关键词，覆盖拉美/东南亚/非洲多个市场 |
+| 智能搜索 | 通过 SerpAPI 在 Google 上执行多关键词 × 多市场组合搜索，关键词和目标市场均可自定义（内置示例以矿业设备采购为参考） |
 | 内容抓取 | 自动抓取搜索结果页面文本，过滤掉社交媒体、电商平台和供应商推广页面 |
 | 双层评分 | **规则引擎**快速预筛 + **DeepSeek AI** 深度评分（0-10 分），精准识别真实买家 |
 | 联系提取 | 自动提取邮箱、电话、WhatsApp、WeChat 等联系方式 |
@@ -76,7 +76,7 @@ cp .env.example .env
 |------|:---:|------|
 | `DEEPSEEK_API_KEY` | 是 | DeepSeek API Key，用于 AI 评分 |
 | `SERPAPI_KEY` | 是 | SerpAPI Key，用于 Google 搜索 |
-| `TARGET_MARKETS` | 否 | 目标市场，逗号分隔（默认：Peru,Indonesia,Ghana） |
+| `TARGET_MARKETS` | 否 | 目标市场，逗号分隔（示例默认：Peru,Indonesia,Ghana，可改为你的行业目标市场） |
 | `MAX_RESULTS_PER_KEYWORD` | 否 | 每个关键词最大搜索结果数（默认：20） |
 | `MIN_SCORE` | 否 | 最低意向分阈值（默认：5） |
 | `SEARCH_DELAY_MS` | 否 | 搜索间隔毫秒数（默认：3000） |
@@ -101,7 +101,7 @@ cp .env.example .env
 ### 基础用法
 
 ```bash
-# 使用默认配置运行（Peru + Indonesia + Ghana，最低 5 分）
+# 使用默认配置运行（示例：Peru + Indonesia + Ghana，最低 5 分，可在 .env 中自定义）
 npm run hunt
 ```
 
@@ -132,7 +132,7 @@ npm run hunt -- --keyword "jaw crusher" --market Ghana --score 7
 
 ### 输出示例
 
-运行后会在终端输出评分最高的前 5 条线索：
+> 以下以矿业设备行业为例。运行后会在终端输出评分最高的前 5 条线索：
 
 ```
 #1 [AI:9/10 Rule:7] MINERA DEL SUR S.A.C.
@@ -144,7 +144,7 @@ npm run hunt -- --keyword "jaw crusher" --market Ghana --score 7
 
 ### CSV 导出
 
-CSV 文件默认导出到 `~/Desktop/矿机客户线索/`，包含以下列：
+CSV 文件默认导出到 `~/Desktop/矿机客户线索/`（可在 `.env` 中通过 `EXPORT_DIR` 自定义），包含以下列：
 
 | 列名 | 说明 |
 |------|------|
@@ -234,7 +234,7 @@ trade-hunting-skill/
 
 ### 添加新市场
 
-在 `src/skills/search/google.ts` 的 `TARGET_MARKETS` 数组中添加：
+> 以下以矿业设备行业为例。在 `src/skills/search/google.ts` 的 `TARGET_MARKETS` 数组中添加目标市场：
 
 ```typescript
 export const TARGET_MARKETS = [
@@ -248,7 +248,7 @@ export const TARGET_MARKETS = [
 
 ### 添加新关键词
 
-在 `src/skills/search/google.ts` 的 `MINING_KEYWORDS` 数组中添加搜索词组。
+在 `src/skills/search/google.ts` 的 `MINING_KEYWORDS` 数组中添加搜索词组。（变量名 `MINING_KEYWORDS` 为示例命名，你可根据实际行业重命名或替换整个数组。）
 
 ### 评分规则调优
 
